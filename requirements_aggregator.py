@@ -27,16 +27,22 @@ def find_requirements_files(base_dir, depth):
     Returns:
     - list: A list of paths to found requirements.txt files.
     """
-    if depth < 0:
-        return []
-
     requirements_files = []
+    count = 0
+
     for root, _, files in os.walk(base_dir):
         if "requirements.txt" in files:
             requirements_files.append(os.path.join(root, "requirements.txt"))
         for _ in root.split(os.sep):
             depth -= 1
+        count += 1
+        # Display progress without spamming the console
+        if count % 50 == 0:
+            print(f"Scanned {count} directories...")
 
+    print(
+        f"Finished scanning! Found {len(requirements_files)} requirements.txt files in {count} directories."
+    )
     return requirements_files
 
 
@@ -122,11 +128,11 @@ def get_save_path(base_dir, default_name="combined_requirements.txt"):
     - str: The path to save the output files.
     """
     print("\nWhere would you like to save the output files?")
-    print("1. Root folder of the directory scanned.")
+    print("0. Root folder of the directory scanned.")
     print(
-        "2. Inside the requirements_aggregator directory under outputs/<short-path-to-folder>/"
+        "1. Inside the requirements_aggregator directory under outputs/<short-path-to-folder>/"
     )
-    print("3. A custom directory of your choosing.")
+    print("2. A custom directory of your choosing.")
     choice = input(
         "Enter choice number (or multiple numbers separated by comma for multiple locations): "
     )
@@ -136,13 +142,17 @@ def get_save_path(base_dir, default_name="combined_requirements.txt"):
     output_dir_inside_aggregator = os.path.join(aggregator_dir, "outputs", short_path)
 
     save_paths = {
-        "1": base_dir,
-        "2": output_dir_inside_aggregator,
-        "3": input("Enter the path to the custom directory: ").strip(),
+        "0": base_dir,
+        "1": output_dir_inside_aggregator,
+        "2": input("Enter the path to the custom directory: ").strip(),
     }
 
-    selected_paths = [save_paths[c] for c in choice.split(",") if c in save_paths]
-
+    selected_paths = [
+        save_paths[str(c)] for c in choice.split(",") if str(c) in save_paths
+    ]
+    print(
+        choice, short_path, aggregator_dir, output_dir_inside_aggregator, selected_paths
+    )
     # Ask for custom output filename
     custom_name = input(
         f"Enter a custom name for the output requirements file (default: {default_name}): "
@@ -152,16 +162,17 @@ def get_save_path(base_dir, default_name="combined_requirements.txt"):
     return [os.path.join(path, filename) for path in selected_paths]
 
 
-def main():
-    base_dir = sanitize_path(input("Enter the root directory to start scanning: "))
+def save_output_files(aggregated_data, save_paths):
+    """
+    Saves the aggregated data to the specified paths.
 
-    depth = int(input("Enter the search depth (default 2): ") or 2)
+    Parameters:
+    - aggregated_data (dict): The aggregated requirements data.
+    - save_paths (list): List of paths to save the output files.
 
-    requirements_files = find_requirements_files(base_dir, depth)
-    aggregated_data = aggregate_requirements(requirements_files, base_dir)
-
-    save_paths = get_save_path(base_dir)
-
+    Returns:
+    - None
+    """
     for path in save_paths:
         # Create directory if it doesn't exist
         os.makedirs(os.path.dirname(path), exist_ok=True)
@@ -171,9 +182,25 @@ def main():
                 out.write(f"{pkg}\n")
         print(f"File saved at {path}")
 
+
+def main():
+    base_dir = sanitize_path(input("Enter the root directory to start scanning: "))
+    depth = int(input("Enter the search depth (default 2): ") or 2)
+
+    requirements_files = find_requirements_files(base_dir, depth)
+    aggregated_data = aggregate_requirements(requirements_files, base_dir)
+
+    save_paths = get_save_path(base_dir)
+
+    save_output_files(aggregated_data, save_paths)
+
     generate_dependency_matrix(aggregated_data, base_dir)
 
     print("Files have been generated at the specified locations.")
+
+
+if __name__ == "__main__":
+    main()
 
 
 if __name__ == "__main__":
