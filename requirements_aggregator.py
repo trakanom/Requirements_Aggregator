@@ -1,11 +1,12 @@
 # ./requirements_aggregator.py
 
 """
-Requirements Aggregator
+Requirements Aggregator with Dependency Matrix
 
 This script scans for requirements.txt files inside imported directories 
-and combines their content into a single unified requirements.txt file. 
-It provides a mapping of packages to directories and highlights overlapping requirements.
+and combines their content into a unified `combined_requirements.txt` file at the root of the specified directory. 
+It provides a mapping of packages to directories and highlights overlapping requirements. 
+Additionally, it generates a dependency matrix in the form of a `requirements_overview.txt`.
 
 Usage:
     Run the script and provide the root directory to start scanning.
@@ -38,47 +39,86 @@ def find_requirements_files(base_dir, depth):
     return requirements_files
 
 
-def aggregate_requirements(requirements_files):
+def aggregate_requirements(requirements_files, base_dir):
     """
-    Aggregate content of multiple requirements.txt files.
+    Aggregate content of multiple requirements.txt files and generate a dependency matrix.
 
     Parameters:
     - requirements_files (list): List of paths to requirements.txt files.
+    - base_dir (str): The base directory from where the relative paths will be determined.
 
     Returns:
     - dict: A dictionary with packages as keys and directories as values.
     """
     aggregated_data = {}
     for req_file in requirements_files:
+        relative_path = os.path.relpath(os.path.dirname(req_file), base_dir)
         with open(req_file, "r") as f:
             for line in f.readlines():
                 line = line.strip()
                 if line and not line.startswith("#"):
                     if line in aggregated_data:
-                        aggregated_data[line].append(os.path.dirname(req_file))
+                        aggregated_data[line].append(relative_path)
                     else:
-                        aggregated_data[line] = [os.path.dirname(req_file)]
+                        aggregated_data[line] = [relative_path]
     return aggregated_data
 
 
+def sanitize_path(path):
+    """
+    Remove terminal escape sequences from a string.
+
+    Parameters:
+    - path (str): The string to sanitize.
+
+    Returns:
+    - str: The sanitized string.
+    """
+    return "".join([char for char in path if ord(char) > 31 or ord(char) == 9])
+
+
+def generate_dependency_matrix(aggregated_data, base_dir):
+    """
+    Generate a dependency matrix showing the relationship between packages and directories.
+
+    Parameters:
+    - aggregated_data (dict): Data containing packages and their associated directories.
+    - base_dir (str): The base directory where the output file will be saved.
+
+    Returns:
+    - None
+    """
+    matrix = []
+    header = ["Package"] + list(
+        set([item for sublist in aggregated_data.values() for item in sublist])
+    )
+    matrix.append(header)
+    for pkg, dirs in aggregated_data.items():
+        row = [pkg] + ["X" if d in dirs else "" for d in header[1:]]
+        matrix.append(row)
+
+    with open(os.path.join(base_dir, "requirements_overview.txt"), "w") as f:
+        for row in matrix:
+            f.write("\t".join(row) + "\n")
+
+
 def main():
-    base_dir = input("Enter the root directory to start scanning: ")
+    base_dir = sanitize_path(input("Enter the root directory to start scanning: "))
+
     depth = int(input("Enter the search depth (default 2): ") or 2)
 
     requirements_files = find_requirements_files(base_dir, depth)
-    aggregated_data = aggregate_requirements(requirements_files)
+    aggregated_data = aggregate_requirements(requirements_files, base_dir)
 
-    with open("combined_requirements.txt", "w") as out:
+    with open(os.path.join(base_dir, "combined_requirements.txt"), "w") as out:
         for pkg, dirs in aggregated_data.items():
-            if len(dirs) > 1:
-                out.write(f"# {pkg} is required in: {', '.join(dirs)}\n")
-                out.write(f"#{pkg}\n")
-            else:
-                out.write(f"# {pkg} is required in: {dirs[0]}\n")
-                out.write(f"{pkg}\n")
+            out.write(f"# {pkg} is required in: {', '.join(dirs)}\n")
+            out.write(f"{pkg}\n")
+
+    generate_dependency_matrix(aggregated_data, base_dir)
 
     print(
-        "Combined requirements.txt file has been generated as 'combined_requirements.txt'."
+        "Files 'combined_requirements.txt' and 'requirements_overview.txt' have been generated in the specified directory."
     )
 
 
