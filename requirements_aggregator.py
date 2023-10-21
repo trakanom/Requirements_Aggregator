@@ -111,6 +111,47 @@ def generate_dependency_matrix(aggregated_data, base_dir):
         writer.writerows(matrix)
 
 
+def get_save_path(base_dir, default_name="combined_requirements.txt"):
+    """
+    Presents the user with choices of where to save the output files and gets the save path.
+
+    Parameters:
+    - base_dir (str): The base directory from where the relative paths will be determined.
+
+    Returns:
+    - str: The path to save the output files.
+    """
+    print("\nWhere would you like to save the output files?")
+    print("1. Root folder of the directory scanned.")
+    print(
+        "2. Inside the requirements_aggregator directory under outputs/<short-path-to-folder>/"
+    )
+    print("3. A custom directory of your choosing.")
+    choice = input(
+        "Enter choice number (or multiple numbers separated by comma for multiple locations): "
+    )
+
+    short_path = base_dir.replace(os.sep, "-").strip("-")
+    aggregator_dir = os.path.dirname(os.path.realpath(__file__))
+    output_dir_inside_aggregator = os.path.join(aggregator_dir, "outputs", short_path)
+
+    save_paths = {
+        "1": base_dir,
+        "2": output_dir_inside_aggregator,
+        "3": input("Enter the path to the custom directory: ").strip(),
+    }
+
+    selected_paths = [save_paths[c] for c in choice.split(",") if c in save_paths]
+
+    # Ask for custom output filename
+    custom_name = input(
+        f"Enter a custom name for the output requirements file (default: {default_name}): "
+    ).strip()
+    filename = custom_name if custom_name else default_name
+
+    return [os.path.join(path, filename) for path in selected_paths]
+
+
 def main():
     base_dir = sanitize_path(input("Enter the root directory to start scanning: "))
 
@@ -119,16 +160,20 @@ def main():
     requirements_files = find_requirements_files(base_dir, depth)
     aggregated_data = aggregate_requirements(requirements_files, base_dir)
 
-    with open(os.path.join(base_dir, "combined_requirements.txt"), "w") as out:
-        for pkg, dirs in aggregated_data.items():
-            out.write(f"# {pkg} is required in: {', '.join(dirs)}\n")
-            out.write(f"{pkg}\n")
+    save_paths = get_save_path(base_dir)
+
+    for path in save_paths:
+        # Create directory if it doesn't exist
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w") as out:
+            for pkg, dirs in aggregated_data.items():
+                out.write(f"# {pkg} is required in: {', '.join(dirs)}\n")
+                out.write(f"{pkg}\n")
+        print(f"File saved at {path}")
 
     generate_dependency_matrix(aggregated_data, base_dir)
 
-    print(
-        "Files 'combined_requirements.txt' and 'requirements_overview.txt' have been generated in the specified directory."
-    )
+    print("Files have been generated at the specified locations.")
 
 
 if __name__ == "__main__":
