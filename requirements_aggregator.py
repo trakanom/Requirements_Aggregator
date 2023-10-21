@@ -13,6 +13,7 @@ Usage:
 """
 
 import os
+import csv
 
 
 def find_requirements_files(base_dir, depth):
@@ -79,7 +80,7 @@ def sanitize_path(path):
 
 def generate_dependency_matrix(aggregated_data, base_dir):
     """
-    Generate a dependency matrix showing the relationship between packages and directories.
+    Generate a dependency matrix in CSV format showing the relationship between directories and packages.
 
     Parameters:
     - aggregated_data (dict): Data containing packages and their associated directories.
@@ -89,17 +90,25 @@ def generate_dependency_matrix(aggregated_data, base_dir):
     - None
     """
     matrix = []
-    header = ["Package"] + list(
+    header = ["Directory"] + list(aggregated_data.keys())
+    matrix.append(header)
+
+    # Get unique directories
+    unique_dirs = list(
         set([item for sublist in aggregated_data.values() for item in sublist])
     )
-    matrix.append(header)
-    for pkg, dirs in aggregated_data.items():
-        row = [pkg] + ["X" if d in dirs else "" for d in header[1:]]
+
+    for directory in unique_dirs:
+        row = [directory] + [
+            "X" if directory in aggregated_data[pkg] else "" for pkg in header[1:]
+        ]
         matrix.append(row)
 
-    with open(os.path.join(base_dir, "requirements_overview.txt"), "w") as f:
-        for row in matrix:
-            f.write("\t".join(row) + "\n")
+    with open(
+        os.path.join(base_dir, "requirements_overview.csv"), "w", newline=""
+    ) as f:
+        writer = csv.writer(f)
+        writer.writerows(matrix)
 
 
 def main():
