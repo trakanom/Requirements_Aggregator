@@ -162,9 +162,9 @@ def get_save_path(base_dir, default_name="combined_requirements.txt"):
     return [os.path.join(path, filename) for path in selected_paths]
 
 
-def save_output_files(aggregated_data, save_paths):
+def save_outputs(aggregated_data, save_paths):
     """
-    Saves the aggregated data to the specified paths.
+    Saves the aggregated requirements and the dependency matrix to the specified paths.
 
     Parameters:
     - aggregated_data (dict): The aggregated requirements data.
@@ -173,14 +173,23 @@ def save_output_files(aggregated_data, save_paths):
     Returns:
     - None
     """
+    # Saving the combined requirements
     for path in save_paths:
-        # Create directory if it doesn't exist
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w") as out:
             for pkg, dirs in aggregated_data.items():
                 out.write(f"# {pkg} is required in: {', '.join(dirs)}\n")
                 out.write(f"{pkg}\n")
         print(f"File saved at {path}")
+
+    # Saving the dependency matrix
+    matrix_paths = [
+        os.path.join(os.path.dirname(path), "requirements_overview.csv")
+        for path in save_paths
+    ]
+    for path in matrix_paths:
+        generate_dependency_matrix(aggregated_data, os.path.dirname(path))
+        print(f"Dependency matrix saved at {path}")
 
 
 def main():
@@ -192,15 +201,9 @@ def main():
 
     save_paths = get_save_path(base_dir)
 
-    save_output_files(aggregated_data, save_paths)
-
-    generate_dependency_matrix(aggregated_data, base_dir)
+    save_outputs(aggregated_data, save_paths)
 
     print("Files have been generated at the specified locations.")
-
-
-if __name__ == "__main__":
-    main()
 
 
 if __name__ == "__main__":
