@@ -14,21 +14,26 @@ Usage:
 
 import os
 from file_discovery import find_requirements_files, aggregate_requirements
-from output_handler import get_save_path, save_outputs
+from output_handler import get_save_path, save_outputs, sanitize_path
 
 
 def main():
-    base_dir = input("Enter the root directory to start scanning: ").strip()
+    # Gather all user inputs first
+    base_dir = sanitize_path(input("Enter the root directory to start scanning: "))
     depth = int(input("Enter the search depth (default 2): ") or 2)
+    save_paths = get_save_path(base_dir)
 
+    # Inform the user that processing is starting
+    print("\nScanning and processing the directories...")
+
+    # Execute the scanning and processing
     requirements_files = find_requirements_files(base_dir, depth)
     aggregated_data = aggregate_requirements(requirements_files, base_dir)
 
-    save_paths = get_save_path(base_dir)
-
+    # Save the outputs to the desired locations
     save_outputs(aggregated_data, save_paths)
 
-    print("Files have been generated at the specified locations.")
+    print("\nFiles have been generated at the specified locations.")
 
 
 if __name__ == "__main__":
