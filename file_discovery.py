@@ -25,8 +25,11 @@ def find_requirements_files(base_dir, depth):
         count += 1
         # Display progress without spamming the console
         if count % 50 == 0:
+            if count // 50 > 1:
+                print("\033[A                             \033[A")
             print(f"Scanned {count} directories...")
-
+    print("\033[A                             \033[A")
+    print(f"Scanned {count} directories...")
     print(
         f"Finished scanning! Found {len(requirements_files)} requirements.txt files in {count} directories."
     )
