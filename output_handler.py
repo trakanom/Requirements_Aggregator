@@ -50,47 +50,39 @@ def generate_dependency_matrix(aggregated_data, base_dir):
         writer.writerows(matrix)
 
 
-def get_save_path(base_dir, default_name="combined_requirements.txt"):
+def get_save_path(base_dir):
     """
-    Presents the user with choices of where to save the output files and gets the save path.
-
-    Parameters:
-    - base_dir (str): The base directory from where the relative paths will be determined.
+    Prompt the user for where to save the output files.
 
     Returns:
-    - list: The paths to save the output files.
+    - list: List of paths to save the output files.
     """
     print("\nWhere would you like to save the output files?")
-    print("0. Root folder of the directory scanned.")
+    print("1. Root folder of directory scanned.")
     print(
-        "1. Inside the requirements_aggregator directory under outputs/<short-path-to-folder>/"
+        "2. Inside the requirements_aggregator directory, under `outputs/<short-path-to-folder>/`."
     )
-    print("2. A custom directory of your choosing.")
-    choice = input(
-        "Enter choice number (or multiple numbers separated by comma for multiple locations): "
-    )
+    print("3. A custom directory of your choosing.")
+    print("4. A combination of the above (use comma-separated values, e.g., '1,3').")
 
-    short_path = base_dir.replace(os.sep, "-").strip("-")
-    aggregator_dir = os.path.dirname(os.path.realpath(__file__))
-    output_dir_inside_aggregator = os.path.join(aggregator_dir, "outputs", short_path)
+    choices = input("Enter your choice(s): ").strip().split(",")
+    save_paths = []
 
-    save_paths = {
-        "0": base_dir,
-        "1": output_dir_inside_aggregator,
-        "2": input("Enter the path to the custom directory: ").strip(),
-    }
+    if "1" in choices:
+        save_paths.append(os.path.join(base_dir, "combined_requirements.txt"))
 
-    selected_paths = [
-        save_paths[str(c)] for c in choice.split(",") if str(c) in save_paths
-    ]
+    if "2" in choices:
+        short_path = base_dir.replace(os.getcwd(), "").replace(os.sep, "-").lstrip("-")
+        path = os.path.join(
+            os.getcwd(), "outputs", short_path, "combined_requirements.txt"
+        )
+        save_paths.append(path)
 
-    # Ask for custom output filename
-    custom_name = input(
-        f"Enter a custom name for the output requirements file (default: {default_name}): "
-    ).strip()
-    filename = custom_name if custom_name else default_name
+    if "3" in choices:
+        custom_path = sanitize_path(input("Enter the custom directory path: "))
+        save_paths.append(os.path.join(custom_path, "combined_requirements.txt"))
 
-    return [os.path.join(path, filename) for path in selected_paths]
+    return save_paths
 
 
 def save_outputs(aggregated_data, save_paths):
