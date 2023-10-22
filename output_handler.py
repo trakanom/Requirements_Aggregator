@@ -29,18 +29,17 @@ def generate_dependency_matrix(aggregated_data, base_dir):
     - None
     """
     matrix = []
-    header = ["Directory"] + list(aggregated_data.keys())
-    matrix.append(header)
 
     # Get unique directories
     unique_dirs = list(
         set([item for sublist in aggregated_data.values() for item in sublist])
     )
 
-    for directory in unique_dirs:
-        row = [directory] + [
-            "X" if directory in aggregated_data[pkg] else "" for pkg in header[1:]
-        ]
+    header = ["Package"] + unique_dirs
+    matrix.append(header)
+
+    for pkg, dirs in aggregated_data.items():
+        row = [pkg] + ["X" if directory in dirs else "" for directory in unique_dirs]
         matrix.append(row)
 
     with open(
